@@ -11,7 +11,7 @@ class Klient {
     public string $haslo;
 
     public static function zaloguj(string $login, string $haslo, PDO $pdo): ?Klient {
-        $stmt = $pdo->prepare("SELECT * FROM klient WHERE login = ?");
+        $stmt = $pdo->prepare("SELECT * FROM klient WHERE login = ? join ");
         $stmt->execute([$login]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -24,8 +24,6 @@ class Klient {
             $klient->pesel = $row['pesel'];
             $klient->telefon = $row['telefon'];
             $klient->adres = $row['adres'];
-            $klient->login = $row['login'];
-            $klient->haslo = $row['haslo'];
             return $klient;
         }
 

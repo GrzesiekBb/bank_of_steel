@@ -1,32 +1,47 @@
 <?php
 session_start();
 require 'db.php';
-if (!isset($_SESSION['klient_id'])) {
+
+if (!isset($_SESSION['id_klienta'])) {
     header('Location: login.php');
     exit;
 }
 
-$id = $_SESSION['klient_id'];
-$stmt = $pdo->prepare("SELECT * FROM logi WHERE id_klienta = ? ORDER BY data_akcji DESC");
-$stmt->execute([$id]);
-$logi = $stmt->fetchAll();
+$id_klienta = $_SESSION['id_klienta'];
+
+// Pobierz logi powiązane z klientem
+$stmt = $pdo->prepare("
+    SELECT l.czas, l.typ_zdarzenia, l.szczegoly
+    FROM log_systemowy l
+    JOIN log_klient lk ON lk.id_loga = l.id_loga
+    WHERE lk.id_klienta = :id
+    ORDER BY l.czas DESC
+");
+$stmt->execute(['id' => $id_klienta]);
+$logi = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Logi systemowe</title>
-<link rel="stylesheet" href="style.css">
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>🧾 Logi systemowe</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="page-container">
     <h2>🧾 Logi systemowe</h2>
 
     <?php if (empty($logi)): ?>
-        <p>Brak logów.</p>
+        <p>Brak logów powiązanych z Twoim kontem.</p>
     <?php else: ?>
         <ul class="log-list">
             <?php foreach ($logi as $log): ?>
-                <li><strong><?= $log['data_akcji'] ?></strong> — <?= htmlspecialchars($log['akcja']) ?></li>
+                <li>
+                    <strong><?= $log['czas'] ?></strong> — 
+                    <em><?= htmlspecialchars($log['typ_zdarzenia']) ?>:</em> 
+                    <?= htmlspecialchars($log['szczegoly']) ?>
+                </li>
             <?php endforeach; ?>
         </ul>
     <?php endif; ?>

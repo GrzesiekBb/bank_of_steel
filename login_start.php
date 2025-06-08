@@ -6,7 +6,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $login = $_POST['login'];
     $haslo = $_POST['haslo'];
 
-    $stmt = $pdo->prepare("SELECT * FROM klient WHERE login = ?");
+    $stmt = $pdo->prepare("SELECT * FROM dane_logowania WHERE login = ?");
     $stmt->execute([$login]);
     $user = $stmt->fetch();
 
