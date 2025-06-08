@@ -148,8 +148,34 @@ DECLARE
     v_id_raty INT;
     v_kwota_raty NUMERIC;
     v_data_splaty DATE := CURRENT_DATE;
+    v_nr_rachunku INT;
     i INT;
 BEGIN
+    -- Sprawdzenie, czy klient istnieje
+    IF NOT EXISTS (SELECT 1 FROM Klient WHERE Id_klienta = p_id_klienta) THEN
+        RETURN 'Błąd: Klient o podanym ID nie istnieje.';
+    END IF;
+
+    -- Szukamy rachunku rozliczeniowego przypisanego do klienta
+    SELECT r.Nr_rachunku INTO v_nr_rachunku
+    FROM Rachunek r 
+    JOIN Klient_Rachunek kr ON r.Nr_rachunku = kr.Nr_rachunku
+    WHERE kr.Id_klient = p_id_klienta AND r.Rodzaj_rachunku = 'Rozliczeniowy' 
+    LIMIT 1;
+
+    -- Jeśli brak rachunku rozliczeniowego, tworzymy nowy i przypisujemy klientowi
+    IF v_nr_rachunku IS NULL THEN
+        CALL otworz_rachunek_proc(p_id_klienta, 'Rozliczeniowy');
+
+        SELECT r.Nr_rachunku INTO v_nr_rachunku 
+        FROM Rachunek r 
+        JOIN Klient_Rachunek kr ON r.Nr_rachunku = kr.Nr_rachunku
+        WHERE kr.Id_klient = p_id_klienta AND r.Rodzaj_rachunku = 'Rozliczeniowy' 
+        ORDER BY r.Nr_rachunku DESC 
+        LIMIT 1;
+    END IF;
+
+    -- Tworzenie kredytu
     INSERT INTO Kredyt (Kwota, Liczba_rat, Oprocentowanie)
     VALUES (p_kwota, p_liczba_rat, 9.0)
     RETURNING ID_kredytu INTO v_id_kredytu;
@@ -157,6 +183,7 @@ BEGIN
     INSERT INTO Kredyt_Klient (Id_kredyt, Id_klienta)
     VALUES (v_id_kredytu, p_id_klienta);
 
+    -- Obliczenie i utworzenie rat
     v_kwota_raty := ROUND(p_kwota / p_liczba_rat, 2);
 
     FOR i IN 1..p_liczba_rat LOOP
@@ -168,7 +195,12 @@ BEGIN
         VALUES (v_id_raty, v_id_kredytu);
     END LOOP;
 
-    RETURN 'Kredyt i raty zostały pomyślnie utworzone.';
+    -- Wpłata środków z kredytu na rachunek rozliczeniowy
+    UPDATE Rachunek 
+    SET Saldo = Saldo + p_kwota 
+    WHERE Nr_rachunku = v_nr_rachunku;
+
+    RETURN 'Kredyt i raty zostały utworzone. Środki dodano do rachunku nr ' || v_nr_rachunku || '.';
 END;
 $$ LANGUAGE plpgsql;
 -----------------------------------------------------

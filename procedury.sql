@@ -154,3 +154,20 @@ BEGIN
 
 END;
 $$;
+-----------------------------------------
+CREATE OR REPLACE FUNCTION get_logi_klienta(v_id_klienta INT)
+RETURNS TABLE (
+    czas TIMESTAMP,
+    typ_zdarzenia VARCHAR,
+    szczegoly TEXT
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT l.czas, l.typ_zdarzenia, l.szczegoly
+    FROM log_systemowy l
+    JOIN log_klient lk ON lk.id_loga = l.id_loga
+    WHERE lk.id_klienta = v_id_klienta
+    ORDER BY l.czas DESC;
+END;
+$$ LANGUAGE plpgsql;
